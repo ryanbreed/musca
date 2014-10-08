@@ -1,0 +1,80 @@
+# Base DN /O=Org. Name/OU=Department
+base_dn: <%= @ca_tool[:base_dn] %>
+
+# Base Directory
+directory: <%= @ca_tool[:directory] %>
+
+# CA Certificate
+ca_cert: ca_cert.pem
+
+# CA Private Key
+ca_key: ca_key.pem
+
+# certificate serial
+ca_serial: ca_serial.txt
+
+# CA Private Key password. You probably shouldn't fill this in.
+# ca_password: seekret
+
+# directory to archive certificates
+cert_archive: certs
+
+# directory to archive requests
+request_archive: requests
+
+# directory to archive keys
+key_archive: keys
+
+# validity periods (in years)
+ca_valid:   10
+cert_valid: 5
+
+# rsa key length
+key_length: 2048
+
+
+# usage extension attributes
+critical:
+  basicConstraints:       true
+  keyUsage:               true
+  extendedKeyUsage:       false
+  nsComment:              false
+  authorityKeyIdentifier: false
+  subjectKeyIdentifier:   false
+
+cert_extensions:
+  ca:
+    basicConstraints:
+      - CA:TRUE
+      - pathlen:0
+    keyUsage: 
+      - keyCertSign
+      - cRLSign
+    subjectKeyIdentifier:
+      - hash
+    authorityKeyIdentifier:
+      - keyid:always
+      - issuer:always
+  client: 
+    keyUsage: 
+      - nonRepudiation 
+      - digitalSignature 
+      - keyEncipherment
+    extendedKeyUsage: 
+      - clientAuth
+    subjectKeyIdentifier:
+      - hash
+    authorityKeyIdentifier:
+      - keyid:always
+      - issuer:always
+  server: 
+    keyUsage: 
+      - nonRepudiation 
+      - digitalSignature 
+    extendedKeyUsage: 
+      - serverAuth
+    subjectKeyIdentifier:
+      - hash
+    authorityKeyIdentifier:
+      - keyid:always
+      - issuer:always
