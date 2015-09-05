@@ -57,6 +57,7 @@ sftp-config.json
 /test/tmp/
 /test/version_tmp/
 /tmp/
+/vendor/
 
 
 ## Documentation cache and generated files:

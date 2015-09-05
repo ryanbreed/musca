@@ -1,8 +1,5 @@
-# Base DN /O=Org. Name/OU=Department
-base_dn: <%= @ca_tool[:base_dn] %>
-
-# Base Directory
-directory: <%= @ca_tool[:directory] %>
+# Base DN 
+base_dn: /O=Org. Name/OU=Department
 
 # CA Certificate
 ca_cert: ca_cert.pem

@@ -1,0 +1,8 @@
+AllCops:
+  Exclude:
+   - 'Guardfile'
+   - 'Gemfile'
+   - 'musca.gemspec'
+   - 'Rakefile'
+   - 'vendor/**/*'
+  DisplayCopNames: true

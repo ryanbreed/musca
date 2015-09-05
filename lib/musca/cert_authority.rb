@@ -1,127 +1,130 @@
 module Musca
   class CertAuthority
     attr_accessor :config_file, :password
-    attr_reader   :cfg
+    attr_reader :cfg
 
     def initialize(*args)
-      Hash[*args].each {|k,v| self.send("#{k}=",v) }
-      @cfg=OpenStruct.new(YAML.load(File.read(config_file)))
-      cfg.dir=File.expand_path(File.dirname(config_file))
+      Hash[*args].each { |k, v| send(format('%s=', k), v) }
+      @cfg = OpenStruct.new(YAML.load(File.read(config_file)))
+      cfg.dir = File.expand_path(File.dirname(config_file))
       # we were passed a :password in #new
       cfg.ca_password ||= password
       # sill no password, we need to ask from console
       if cfg.ca_password.nil?
-        cfg.ca_password=get_password("Enter CA Password: ")
+        cfg.ca_password = get_password('Enter CA Password: ')
       end
       Dir.chdir(cfg.dir) do
         # load certs if they've already been created. silently fail.
-        if File.exists?(cfg.ca_cert ) && File.exists?(cfg.ca_key)
-          cfg.key=OpenSSL::PKey::RSA.new(
+        if File.exist?(cfg.ca_cert) && File.exist?(cfg.ca_key)
+          cfg.key = OpenSSL::PKey::RSA.new(
             File.read(cfg.ca_key),
             cfg.ca_password
-          )  
-          cfg.cert=OpenSSL::X509::Certificate.new(File.read(cfg.ca_cert))
+          )
+          cfg.cert = OpenSSL::X509::Certificate.new(File.read(cfg.ca_cert))
         end
       end
     end
-  
+
     def create
-      basedn=OpenSSL::X509::Name.parse(cfg.base_dn)
-      my_dn=basedn.add_entry("CN","Musca CA")
-      cfg.key=             gen_pkey
-      cfg.cert=            OpenSSL::X509::Certificate.new
-      cfg.cert.subject=    my_dn
-      cfg.cert.issuer=     my_dn
-      cfg.cert.not_before= Time.now
-      cfg.cert.not_after=  Time.now + cfg.ca_valid * 365 * 24 * 60 * 60
-      cfg.cert.public_key= cfg.key.public_key
-      cfg.cert.serial=     1
-      cfg.cert.version=    2
-      populate_extensions("ca", cfg.cert)
-      cfg.cert.sign(cfg.key,OpenSSL::Digest::SHA256.new)
-      cipher=OpenSSL::Cipher::AES256.new(:CBC)
+      basedn = OpenSSL::X509::Name.parse(cfg.base_dn)
+      my_dn = basedn.add_entry('CN', 'Musca CA')
+      cfg.key = gen_pkey
+      cfg.cert = OpenSSL::X509::Certificate.new
+      cfg.cert.subject = my_dn
+      cfg.cert.issuer = my_dn
+      cfg.cert.not_before = Time.now
+      cfg.cert.not_after = Time.now + cfg.ca_valid * 365 * 24 * 60 * 60
+      cfg.cert.public_key = cfg.key.public_key
+      cfg.cert.serial = 1
+      cfg.cert.version = 2
+      populate_extensions('ca', cfg.cert)
+      cfg.cert.sign(cfg.key, OpenSSL::Digest::SHA256.new)
+      # cipher = OpenSSL::Cipher::AES256.new(:CBC)
       Dir.chdir(cfg.dir) do
-        File.open(cfg.ca_cert, "w") {|f| f.write(cfg.cert.to_pem) }
-        File.open(cfg.ca_key,  "w") {|f| f.write(cfg.key.to_pem) }
+        File.open(cfg.ca_cert, 'w') { |f| f.write(cfg.cert.to_pem) }
+        File.open(cfg.ca_key,  'w') { |f| f.write(cfg.key.to_pem) }
       end
     end
-  
-    def sign_request(certclass,req)
-    end
-  
-    def newcert(certclass,cn)
-      new_dn=OpenSSL::X509::Name.parse(cfg.base_dn)
-      new_dn.add_entry("OU",certclass)
-      new_dn.add_entry("CN",cn)
-      new_key=             gen_pkey
-      new_cert=            OpenSSL::X509::Certificate.new
-      new_cert.not_before= Time.now
-      new_cert.not_after=  Time.now + cfg.cert_valid * 365 * 24 * 60 * 60
-      new_cert.subject=    new_dn
-      new_cert.public_key= new_key.public_key
-      new_cert.version=    2
-      new_cert.issuer=     cfg.cert.subject
-      new_cert.serial=     next_serial
-      populate_extensions(certclass,new_cert)
+
+    def newcert(certclass, cn)
+      new_dn = OpenSSL::X509::Name.parse(cfg.base_dn)
+      new_dn.add_entry('OU', certclass)
+      new_dn.add_entry('CN', cn)
+      new_key =             gen_pkey
+      new_cert =            OpenSSL::X509::Certificate.new
+      new_cert.not_before = Time.now
+      new_cert.not_after =  Time.now + cfg.cert_valid * 365 * 24 * 60 * 60
+      new_cert.subject =    new_dn
+      new_cert.public_key = new_key.public_key
+      new_cert.version =    2
+      new_cert.issuer =     cfg.cert.subject
+      new_cert.serial =     next_serial
+      populate_extensions(certclass, new_cert)
       new_cert.sign(cfg.key, OpenSSL::Digest::SHA256.new)
-      fname="%04x_%s_%s" % [new_cert.serial, cn, certclass]
+      fname = format('%04x_%s_%s', new_cert.serial, cn, certclass)
       Dir.chdir(cfg.dir) do
-        File.write(File.join("keys",  "%s_key.pem"  % fname), new_key.to_pem )
-        File.write(File.join("certs", "%s_cert.pem" % fname), new_cert.to_pem )
+        key_name = File.join('keys', format('%s_key.pem', fname))
+        File.write(key_name, new_key.to_pem)
+        cert_name = File.join('certs', format('%s_cert.pem', fname))
+        File.write(cert_name, new_cert.to_pem)
       end
       new_cert
     end
 
     private
 
-    def populate_extensions(certclass,thing)
-      unless cfg.cert_extensions.has_key? certclass
-        raise ArgumentError, "%s certificate type not valid (must be: %s)" % [
-          certclass, cfg.cert_extensions.keys.join(", ")
-        ]
+    def populate_extensions(certclass, thing)
+      unless cfg.cert_extensions.key? certclass
+        fail ArgumentError,
+             format('%s certificate type not valid (must be: %s)',
+                    certclass,
+                    cfg.cert_extensions.keys.join(', '))
       end
-      ef=OpenSSL::X509::ExtensionFactory.new
-      if thing.is_a?    OpenSSL::X509::Request
-        ef.subject_request=    thing
+      ef = OpenSSL::X509::ExtensionFactory.new
+      if thing.is_a? OpenSSL::X509::Request
+        ef.subject_request = thing
       elsif thing.is_a? OpenSSL::X509::Certificate
-        ef.subject_certificate=thing
+        ef.subject_certificate = thing
       end
-      ef.issuer_certificate=cfg.cert
+      ef.issuer_certificate = cfg.cert
       cfg.cert_extensions[certclass].each do |ext_name, vals|
         thing.add_extension(
           ef.create_extension(
             ext_name,
-            vals.join(","),
+            vals.join(','),
             cfg.critical[ext_name]
           )
         )
       end
       thing.add_extension(
-        ef.create_extension("nsComment",
+        ef.create_extension(
+          'nsComment',
           "Generated by musca for Musca #{certclass.capitalize}"
         )
       )
     end
+
     private
-    def get_password(prompt="enter password: ")
+
+    def get_password(prompt = 'enter password: ')
       print prompt
-      password=STDIN.noecho(&:gets).strip
-      print "\n"
+      password = STDIN.noecho(&:gets).strip
+      print '\n'
       password
     end
 
     def next_serial
-      new_serial=nil
-      Dir.chdir(cfg.dir) do 
-        cur_serial=File.read(cfg.ca_serial).strip.to_i
-        new_serial=cur_serial + 1
-        File.open(cfg.ca_serial,"w") {|f| f.write(new_serial) }
+      new_serial = nil
+      Dir.chdir(cfg.dir) do
+        cur_serial = File.read(cfg.ca_serial).strip.to_i
+        new_serial = cur_serial + 1
+        File.open(cfg.ca_serial, 'w') { |f| f.write(new_serial) }
       end
       new_serial
-    end   
+    end
 
     def gen_pkey
       OpenSSL::PKey::RSA.new(cfg.key_length)
-    end 
+    end
   end
 end
