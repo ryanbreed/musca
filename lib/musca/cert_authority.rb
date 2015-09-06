@@ -9,10 +9,6 @@ module Musca
       cfg.dir = File.expand_path(File.dirname(config_file))
       # we were passed a :password in #new
       cfg.ca_password ||= password
-      # sill no password, we need to ask from console
-      if cfg.ca_password.nil?
-        cfg.ca_password = get_password('Enter CA Password: ')
-      end
       Dir.chdir(cfg.dir) do
         # load certs if they've already been created. silently fail.
         if File.exist?(cfg.ca_cert) && File.exist?(cfg.ca_key)

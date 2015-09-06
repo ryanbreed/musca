@@ -2,6 +2,15 @@ module Musca
   class CLI < Thor
     include Thor::Actions
 
+    class_option :dir,
+                 type: :string,
+                 banner: 'CA directory',
+                 default: Dir.pwd
+    class_option :config,
+                 type: :string,
+                 banner: 'CA config file',
+                 default: 'ca_config.yml'
+
     source_root(
       File.expand_path(
         File.join(
@@ -9,10 +18,6 @@ module Musca
         )))
 
     desc 'create', 'configure CA hierarchy'
-    method_option :dir,
-                  type: :string,
-                  banner: 'CA directory',
-                  default: Dir.pwd
     def create
       destination_root = File.expand_path(options.dir)
       @ca_tool[:directory] = destination_root
@@ -27,27 +32,15 @@ module Musca
       end
     end
 
-    desc 'genkeys', 'generate root key and cert'
-    method_option :dir,
-                  type: :string,
-                  banner: 'CA directory',
-                  default: Dir.pwd
-    method_option :config,
-                  type: :string,
-                  banner: 'CA config file',
-                  default: 'ca_config.yml'
-    def genkeys
+    desc 'genca', 'generate root key and cert'
+
+    def genca
       config_fileFile.join(options[:dir], options[:config])
       new_ca = Musca::CertAuthority.new(config_file: config_file)
       new_ca.create
     end
 
-    desc 'newcert', 'create and sign a new keypair and certificate'
-    method_option :config,
-                  type: :string,
-                  required: :true,
-                  banner: 'CA configuration file',
-                  default: File.join(Dir.pwd, 'ca_config.yml')
+    desc 'gencert', 'create and sign a new keypair and certificate'
     method_option :certclass,
                   type: :string,
                   required: :true,
