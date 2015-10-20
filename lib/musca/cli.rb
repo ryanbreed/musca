@@ -65,10 +65,15 @@ module Musca
                   type: :string,
                   banner: 'CA config file',
                   default: 'ca_config.yml'
+    method_option :certclass,
+                  type: :string,
+                  required: :true,
+                  banner: "'server' or 'client'"
     def sign(filename='request.pem')
       ca = Musca::CertAuthority.new(config_file: options.config)
       request_data=File.read(filename)
-      binding.pry
+      csr = OpenSSL::X509::Request.new(request_data)
+      ca.sign_request(options[:certclass],csr)
     end
   end
 end

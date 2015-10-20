@@ -71,6 +71,27 @@ module Musca
       new_cert
     end
 
+    def sign_request(certclass, csr)
+      fail ArgumentError, 'cannot verify cert request' unless csr.verify(csr.public_key)
+      cn = csr.subject.to_a.find {|e| e[0]=='CN'}[1]
+      new_cert =            OpenSSL::X509::Certificate.new
+      new_cert.not_before = Time.now
+      new_cert.not_after =  Time.now + cfg.cert_valid * 365 * 24 * 60 * 60
+      new_cert.subject = csr.subject
+      new_cert.public_key = csr.public_key
+      new_cert.version = 2
+      new_cert.issuer = cfg.cert.subject
+      new_cert.serial =     next_serial
+      populate_extensions(certclass, new_cert)
+      new_cert.sign(cfg.key, OpenSSL::Digest::SHA256.new)
+      fname = format('%04x_%s_%s', new_cert.serial, cn, certclass)
+      Dir.chdir(cfg.dir) do
+        cert_name = File.join('certs', format('%s_cert.pem', fname))
+        File.write(cert_name, new_cert.to_pem)
+      end
+      new_cert
+    end
+
     private
 
     def populate_extensions(certclass, thing)
