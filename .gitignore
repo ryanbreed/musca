@@ -1,6 +1,7 @@
 # BEGIN ME
+*.pem
+*.csr
 .env
-spec/fixtures
 .vagrant
 # BEGIN VIM
 [._]*.s[a-w][a-z]

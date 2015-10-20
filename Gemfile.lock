@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    musca (0.5)
+    musca (0.5.2)
       thor
 
 GEM

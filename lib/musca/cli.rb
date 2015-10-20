@@ -9,15 +9,9 @@ module Musca
         )))
 
     desc 'create', 'configure CA hierarchy'
-    method_option :dir,
-                  type: :string,
-                  banner: 'CA directory',
-                  default: Dir.pwd
-    def create
-      destination_root = File.expand_path(options.dir)
-      @ca_tool[:directory] = destination_root
-
-      # empty_directory destination_root
+    def create(dir=Dir.pwd)
+      destination_root = File.expand_path(dir)
+      empty_directory destination_root
       template 'ca_config.yml.tt', File.join(destination_root, 'ca_config.yml')
       inside destination_root do
         create_file 'ca_serial.txt', 1
@@ -37,7 +31,7 @@ module Musca
                   banner: 'CA config file',
                   default: 'ca_config.yml'
     def genkeys
-      config_fileFile.join(options[:dir], options[:config])
+      config_file = File.join(options[:dir], options[:config])
       new_ca = Musca::CertAuthority.new(config_file: config_file)
       new_ca.create
     end
@@ -60,6 +54,21 @@ module Musca
     def newcert
       ca = Musca::CertAuthority.new(config_file: options.config)
       ca.newcert(options.certclass, options.hostname)
+    end
+
+    desc 'sign REQUEST.pem', 'sign cert request'
+    method_option :dir,
+                  type: :string,
+                  banner: 'CA directory',
+                  default: Dir.pwd
+    method_option :config,
+                  type: :string,
+                  banner: 'CA config file',
+                  default: 'ca_config.yml'
+    def sign(filename='request.pem')
+      ca = Musca::CertAuthority.new(config_file: options.config)
+      request_data=File.read(filename)
+      binding.pry
     end
   end
 end
