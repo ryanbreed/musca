@@ -21,19 +21,31 @@ module Musca
       end
     end
 
+    def blank_cert(type = 'server')
+      init = Time.now
+      cert = OpenSSL::X509::Certificate.new
+      cert.serial = 1
+      cert.version = 2
+      cert.not_before = init
+      cert.not_after = init + cfg.cert_valid * 365 * 24 * 60 * 60
+      populate_extensions(type, cert)
+      cert
+    end
+
+    def init_keys(cert)
+      new_key = gen_pkey
+      cert.public_key = new_key.public_key
+      new_key
+    end
+
+
     def create
       basedn = OpenSSL::X509::Name.parse(cfg.base_dn)
       my_dn = basedn.add_entry('CN', 'Musca CA')
-      cfg.key = gen_pkey
-      cfg.cert = OpenSSL::X509::Certificate.new
+      cfg.cert = blank_cert('ca')
+      cfg.key = init_keys(cfg.cert)
       cfg.cert.subject = my_dn
       cfg.cert.issuer = my_dn
-      cfg.cert.not_before = Time.now
-      cfg.cert.not_after = Time.now + cfg.ca_valid * 365 * 24 * 60 * 60
-      cfg.cert.public_key = cfg.key.public_key
-      cfg.cert.serial = 1
-      cfg.cert.version = 2
-      populate_extensions('ca', cfg.cert)
       cfg.cert.sign(cfg.key, OpenSSL::Digest::SHA256.new)
       # cipher = OpenSSL::Cipher::AES256.new(:CBC)
       Dir.chdir(cfg.dir) do
@@ -46,16 +58,11 @@ module Musca
       new_dn = OpenSSL::X509::Name.parse(cfg.base_dn)
       new_dn.add_entry('OU', certclass)
       new_dn.add_entry('CN', cn)
-      new_key =             gen_pkey
-      new_cert =            OpenSSL::X509::Certificate.new
-      new_cert.not_before = Time.now
-      new_cert.not_after =  Time.now + cfg.cert_valid * 365 * 24 * 60 * 60
+      new_cert =            blank_cert(certclass)
       new_cert.subject =    new_dn
       new_cert.public_key = new_key.public_key
-      new_cert.version =    2
       new_cert.issuer =     cfg.cert.subject
       new_cert.serial =     next_serial
-      populate_extensions(certclass, new_cert)
       new_cert.sign(cfg.key, OpenSSL::Digest::SHA256.new)
       fname = format('%04x_%s_%s', new_cert.serial, cn, certclass)
       Dir.chdir(cfg.dir) do
@@ -101,13 +108,6 @@ module Musca
     end
 
     private
-
-    def get_password(prompt = 'enter password: ')
-      print prompt
-      password = STDIN.noecho(&:gets).strip
-      print '\n'
-      password
-    end
 
     def next_serial
       new_serial = nil
